@@ -310,16 +310,16 @@ function hsl_col_perc(percent, start, end) {
 function get_today() {
     let today = new Date(Date.now());
     let day = today.getDate();
-    day.toString().padStart(2, '0');
+    day = day.toString().padStart(2, '0');
 
     let month = today.getMonth() + 1;
-    month.toString().padStart(2, '0');
+    month = month.toString().padStart(2, '0');
     
     let hour = today.getHours();
-    hour.toString().padStart(2, '0');
+    hour = hour.toString().padStart(2, '0');
     
     let minutes = today.getMinutes();
-    minutes.toString().padStart(2, '0');
+    minutes = minutes.toString().padStart(2, '0');
     
     const date = {day: day, month: month, year: today.getFullYear(), hour: hour, minutes: minutes, weekday: weekday[today.getDay()]};
     return date;
