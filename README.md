@@ -1,6 +1,6 @@
 # Steinbock_Capacity
 
-This script shows the current utilization of the bouldering hall *der Steinbock* in Constance, Germany.
+This script shows the current utilization of the bouldering hall *der Steinbock* in Constance, Germany.<br>
 It also shows the median utilization of the current weekday from past weeks.
 
 ## Installation
