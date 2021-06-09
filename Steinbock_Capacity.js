@@ -186,13 +186,15 @@ function draw_time_triangle(drawContext, image_width, image_height, steps, shift
         return;
     }
     current_step *= 4;
-    current_step += today.minutes / 15;
+    current_step += parseInt(today.minutes) / 15;
+    
+    console.log(current_step)
     
     const temp_line = new Path();
-    temp_line.move(new Point(current_step * steps, image_height - (15 - DATA_MIN) / DATA_MAX * image_height * shifter));
+    temp_line.move(new Point(current_step * steps, image_height - (35 - DATA_MIN) / DATA_MAX * image_height * shifter));
     temp_line.addLine(new Point(current_step * steps + steps / 1.5, image_height));
     temp_line.addLine(new Point(current_step * steps - steps / 1.5, image_height));
-    temp_line.addLine(new Point(current_step * steps, image_height - (15 - DATA_MIN) / DATA_MAX * image_height * shifter));
+    temp_line.addLine(new Point(current_step * steps, image_height - (35 - DATA_MIN) / DATA_MAX * image_height * shifter));
     temp_line.closeSubpath();
     drawContext.addPath(temp_line);
     drawContext.setLineWidth(0.5);
@@ -241,13 +243,16 @@ function split_csv(csv) {
     }
     let time_capacity = {};
     for(let i = 0; i < splitted_rows.length; i++) {
-        if(splitted_rows[i][0] === today.weekday) {
-            if(time_capacity[splitted_rows[i][2]]) {
+         if(splitted_rows[i][0] === today.weekday) {
+            console.log(splitted_rows[i][2])
+            if(splitted_rows[i][2] in time_capacity) {
+                console.log('IN')
                 time_capacity[splitted_rows[i][2]].push(parseInt(splitted_rows[i][3]));
             } else {
                 time_capacity[splitted_rows[i][2]] = [parseInt(splitted_rows[i][3])];
             }
-        }
+            console.log(time_capacity)
+         }
     }
     return time_capacity;
 }
