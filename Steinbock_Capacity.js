@@ -1,6 +1,3 @@
-// Variables used by Scriptable.
-// These must be at the very top of the file. Do not edit.
-// icon-color: brown; icon-glyph: dumbbell;
 let widget_family = 0;
 const weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const today = get_today();
@@ -31,7 +28,7 @@ Script.complete()
 
 async function createWidget() {    
     let widget = new ListWidget();
-    widget.setPadding(10, 0, 0, -8);
+    widget.setPadding(10, 0, 0, 0);
     widget.backgroundColor = Color.dynamic(new Color('ffffff'),new Color('000000'))
     
     if (config.widgetFamily === undefined) {
@@ -220,10 +217,10 @@ function addDataView(widget, capacity) {
         let horizontal_stack2 = viewStack.addStack();
         horizontal_stack2.addSpacer();
         let footnote = horizontal_stack2.addText(`${today.hour}:${today.minutes}`);
-        footnote.font = Font.mediumSystemFont(6);
+        footnote.font = Font.mediumSystemFont(8);
         footnote.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
         horizontal_stack2.addSpacer();
-        value_text = `${capacity}%`;
+        value_text = `${capacity}% ≈ ${Math.floor(80 * capacity / 100)}/80`;
         value_color = choose_color(capacity);
     }
 
@@ -287,9 +284,9 @@ function choose_color(temperature) {
     } else if(temperature >= 25 && temperature < 50) {
         colour = hsl_col_perc((temperature - 25) / (50 - 25) * 100, green, yellow);
     } else if(temperature >= 50 && temperature <= 75) {
-        colour = hsl_col_perc((temperature - 50) / (75 - 50) * 100, yellow, red);
+        colour = hsl_col_perc((temperature - 50) / (90 - 50) * 100, yellow, red);
     } else {
-        colour = hsl_col_perc((temperature - 75) / (100 - 75) * 100, red, pink);
+        colour = hsl_col_perc((temperature - 90) / (100 - 90) * 100, red, pink);
     }
     return new Color(colour);
 }
