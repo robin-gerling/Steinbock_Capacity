@@ -55,7 +55,7 @@ async function createWidget() {
     const capacity = await get_steinbock_capacity();
     
     if(capacity === -1) {
-        let err_message = widget.addText('No data available!\nPerhaps, you are may not connected to the Internet!');
+        let err_message = widget.addText('No data available!\nPerhaps, you may not be connected to the Internet!');
         err_message.font = Font.boldSystemFont(10);
         err_message.centerAlignText();
         err_message.textColor = Color.red();
@@ -203,7 +203,14 @@ function addDataView(widget, capacity) {
     let viewStack = widget.addStack();
     viewStack.layoutVertically();
     
-    
+    if(!((today.weekday === 'Monday' || today.weekday === 'Tuesday' || today.weekday === 'Wednesday' || today.weekday === 'Thursday' || today.weekday === 'Friday') && today.hour === '09') || !(today.weekday === 'Saturday' || today.weekday === 'Sunday') && ((today.hour === '22' && (today.minutes === '15' || today.minutes === '30' || today.minutes === '45')) || today.hour === '23')) {
+        add_text_within_opening_times(viewStack, capacity);
+    } else {
+        add_text_outside_opening_times(viewStack);
+    }
+}
+
+function add_text_within_opening_times(viewStack, capacity) {
     let horizontal_stack1 = viewStack.addStack();
     horizontal_stack1.addSpacer();
     let label = horizontal_stack1.addText('Current Utilization:');
@@ -211,24 +218,36 @@ function addDataView(widget, capacity) {
     label.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
     horizontal_stack1.addSpacer();
     
-    let value_text = 'ERROR';
-    let value_color = Color.purple();
-    if (capacity !== -1) {
-        let horizontal_stack2 = viewStack.addStack();
-        horizontal_stack2.addSpacer();
-        let footnote = horizontal_stack2.addText(`${today.hour}:${today.minutes}`);
-        footnote.font = Font.mediumSystemFont(8);
-        footnote.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
-        horizontal_stack2.addSpacer();
-        value_text = `${capacity}% ≈ ${Math.floor(80 * capacity / 100)}/80`;
-        value_color = choose_color(capacity);
-    }
+    let horizontal_stack2 = viewStack.addStack();
+    horizontal_stack2.addSpacer();
+    let footnote = horizontal_stack2.addText(`${today.hour}:${today.minutes}`);
+    footnote.font = Font.mediumSystemFont(8);
+    footnote.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
+    horizontal_stack2.addSpacer();
+    let value_text = `${capacity}% ≈ ${Math.floor(80 * capacity / 100)}/80`;
+    let value_color = choose_color(capacity);
 
     let horizontal_stack3 = viewStack.addStack();
     horizontal_stack3.addSpacer();
     let value = horizontal_stack3.addText(value_text);
     value.font = Font.mediumSystemFont(20);
     value.textColor = value_color;
+    horizontal_stack3.addSpacer();
+}
+
+function add_text_outside_opening_times(viewStack, capacity) {
+    let horizontal_stack2 = viewStack.addStack();
+    horizontal_stack2.addSpacer();
+    let footnote = horizontal_stack2.addText(`${today.hour}:${today.minutes}`);
+    footnote.font = Font.mediumSystemFont(8);
+    footnote.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
+    horizontal_stack2.addSpacer();
+
+    let horizontal_stack3 = viewStack.addStack();
+    horizontal_stack3.addSpacer();
+    let value = horizontal_stack3.addText('The Steinbock is not open at the moment!');
+    value.font = Font.mediumSystemFont(12);
+    value.textColor = Color.orange();
     horizontal_stack3.addSpacer();
 }
 
