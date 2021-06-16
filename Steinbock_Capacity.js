@@ -185,8 +185,6 @@ function draw_time_triangle(drawContext, image_width, image_height, steps, shift
     current_step *= 4;
     current_step += parseInt(today.minutes) / 15;
     
-    console.log(current_step)
-    
     const temp_line = new Path();
     temp_line.move(new Point(current_step * steps, image_height - (35 - DATA_MIN) / DATA_MAX * image_height * shifter));
     temp_line.addLine(new Point(current_step * steps + steps / 1.5, image_height));
@@ -203,10 +201,11 @@ function addDataView(widget, capacity) {
     let viewStack = widget.addStack();
     viewStack.layoutVertically();
     
-    if(!((today.weekday === 'Monday' || today.weekday === 'Tuesday' || today.weekday === 'Wednesday' || today.weekday === 'Thursday' || today.weekday === 'Friday') && today.hour === '09') || !(today.weekday === 'Saturday' || today.weekday === 'Sunday') && ((today.hour === '22' && (today.minutes === '15' || today.minutes === '30' || today.minutes === '45')) || today.hour === '23')) {
-        add_text_within_opening_times(viewStack, capacity);
+    const time = parseInt(today.hour + today.minutes)
+    if(((today.weekday === 'Monday' || today.weekday === 'Tuesday' || today.weekday === 'Wednesday' || today.weekday === 'Thursday' || today.weekday === 'Friday') && (time < 1000 || time > 2300)) || ((today.weekday === 'Saturday' || today.weekday === 'Sunday') && (time < 900 || time > 2200))) {
+        add_text_outside_opening_times(viewStack, capacity);
     } else {
-        add_text_outside_opening_times(viewStack);
+        add_text_within_opening_times(viewStack);
     }
 }
 
@@ -260,14 +259,12 @@ function split_csv(csv) {
     let time_capacity = {};
     for(let i = 0; i < splitted_rows.length; i++) {
          if(splitted_rows[i][0] === today.weekday) {
-            console.log(splitted_rows[i][2])
             if(splitted_rows[i][2] in time_capacity) {
                 console.log('IN')
                 time_capacity[splitted_rows[i][2]].push(parseInt(splitted_rows[i][3]));
             } else {
                 time_capacity[splitted_rows[i][2]] = [parseInt(splitted_rows[i][3])];
             }
-            console.log(time_capacity)
          }
     }
     return time_capacity;
