@@ -186,10 +186,10 @@ function draw_time_triangle(drawContext, image_width, image_height, steps, shift
     current_step += parseInt(today.minutes) / 15;
     
     const temp_line = new Path();
-    temp_line.move(new Point(current_step * steps, image_height - (35 - DATA_MIN) / DATA_MAX * image_height * shifter));
+    temp_line.move(new Point(current_step * steps, image_height - (15 - DATA_MIN) / DATA_MAX * image_height * shifter));
     temp_line.addLine(new Point(current_step * steps + steps / 1.5, image_height));
     temp_line.addLine(new Point(current_step * steps - steps / 1.5, image_height));
-    temp_line.addLine(new Point(current_step * steps, image_height - (35 - DATA_MIN) / DATA_MAX * image_height * shifter));
+    temp_line.addLine(new Point(current_step * steps, image_height - (15 - DATA_MIN) / DATA_MAX * image_height * shifter));
     temp_line.closeSubpath();
     drawContext.addPath(temp_line);
     drawContext.setLineWidth(0.5);
@@ -203,9 +203,9 @@ function addDataView(widget, capacity) {
     
     const time = parseInt(today.hour + today.minutes)
     if(((today.weekday === 'Monday' || today.weekday === 'Tuesday' || today.weekday === 'Wednesday' || today.weekday === 'Thursday' || today.weekday === 'Friday') && (time < 1000 || time > 2300)) || ((today.weekday === 'Saturday' || today.weekday === 'Sunday') && (time < 900 || time > 2200))) {
-        add_text_outside_opening_times(viewStack, capacity);
+        add_text_outside_opening_times(viewStack);
     } else {
-        add_text_within_opening_times(viewStack);
+        add_text_within_opening_times(viewStack, capacity);
     }
 }
 
