@@ -18,7 +18,7 @@ if (config.runsInWidget) {
 if (config.runsWithSiri) {
     const capacity = await get_steinbock_capacity();
     if (capacity !== -1) {
-        Speech.speak(`The Steinbock has an utilization of ${capacity} % right now. This corresponds to ${Math.floor(80 * capacity / 100)} people.`);
+        Speech.speak(`The Steinbock has an utilization of ${capacity} % right now. This corresponds to ${Math.round(80 * capacity / 100)} people.`);
     } else {
         Speech.speak('Oops, Looks like there was an Error! Please try again later.');
     }
@@ -223,7 +223,7 @@ function add_text_within_opening_times(viewStack, capacity) {
     footnote.font = Font.mediumSystemFont(8);
     footnote.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
     horizontal_stack2.addSpacer();
-    let value_text = `${capacity}% ≈ ${Math.floor(80 * capacity / 100)}/80`;
+    let value_text = `${capacity}% ≈ ${Math.round(80 * capacity / 100)}/80`;
     let value_color = choose_color(capacity);
 
     let horizontal_stack3 = viewStack.addStack();
