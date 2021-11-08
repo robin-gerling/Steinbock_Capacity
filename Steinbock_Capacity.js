@@ -1,8 +1,12 @@
+// Variables used by Scriptable.
+// These must be at the very top of the file. Do not edit.
+// icon-color: brown; icon-glyph: dumbbell;
 let widget_family = 0;
 const weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const today = get_today();
 const DATA_MIN = 0;
 const DATA_MAX = 100;
+let aggregated_value = 0;
 
 
 let widget = await createWidget()
@@ -12,6 +16,7 @@ if (config.runsInWidget) {
     Script.setWidget(widget)
 } else {
     widget.presentSmall()
+    Script
 }
 
 
@@ -63,17 +68,17 @@ async function createWidget() {
     } else {
         addDataView(widget, capacity);
         widget.addSpacer();
-        const capacity_csv = await get_website_content('https://raw.githubusercontent.com/robin-ger35/Steinbock_Capacity/main/capacity_steinbock.csv');
-        const time_capacity = split_csv(capacity_csv);
-        const median_array = get_aggregated_data(time_capacity);
-        if(median_array.length === 0) {
+        const capacity_csv = await get_website_content('https://raw.githubusercontent.com/robin-ger35/Steinbock_Capacity/main/aggregated_capacity_steinbock.csv');
+        const agg_array = split_csv(capacity_csv);
+        if(agg_array.length === 0) {
             let err_message = widget.addText('Chart not available!');
             err_message.font = Font.boldSystemFont(10);
             err_message.centerAlignText();
             err_message.textColor = Color.red();
             widget.addSpacer(10);
         } else {
-            add_graph(widget, median_array);
+            console.log(agg_array)
+            add_graph(widget, agg_array);
         }
     }
     return widget;
@@ -256,35 +261,15 @@ function split_csv(csv) {
     for(let i = 1; i < rows.length; i++) {
         splitted_rows.push(rows[i].split(','));
     }
-    let time_capacity = {};
+    let time_capacity = [];
     for(let i = 0; i < splitted_rows.length; i++) {
-         if(splitted_rows[i][0] === today.weekday) {
-            if(splitted_rows[i][2] in time_capacity) {
-                console.log('IN')
-                time_capacity[splitted_rows[i][2]].push(parseInt(splitted_rows[i][3]));
-            } else {
-                time_capacity[splitted_rows[i][2]] = [parseInt(splitted_rows[i][3])];
-            }
-         }
+        if(splitted_rows[i][0] === today.weekday) {
+            console.log(splitted_rows[i])
+            time_capacity.push(parseFloat(splitted_rows[i][2 + aggregated_value]))
+        }
     }
     return time_capacity;
 }
-
-function get_aggregated_data(time_capacity) {
-    let median_array = [];
-    for (let key in time_capacity) {
-        time_capacity[key].sort((a, b) => a - b)
-        const half = Math.floor(time_capacity[key].length / 2);
-        let median = 0;
-        if (time_capacity[key].length % 2) {
-            median_array.push(time_capacity[key][half]);
-        } else {
-            median_array.push((time_capacity[key][half - 1] + time_capacity[key][half]) / 2.0);
-        }
-    }
-    return median_array;
-}
-
 
 function choose_color(temperature) {
     const red = 0;
@@ -302,7 +287,7 @@ function choose_color(temperature) {
     } else if(temperature >= 50 && temperature <= 75) {
         colour = hsl_col_perc((temperature - 50) / (90 - 50) * 100, yellow, red);
     } else {
-        colour = hsl_col_perc((temperature - 90) / (100 - 90) * 100, red, pink);
+        colour = hsl_col_perc((temperature - 90) / (100 - 90) * 100, 360, pink);
     }
     return new Color(colour);
 }
