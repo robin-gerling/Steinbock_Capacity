@@ -1,329 +1,474 @@
-// Variables used by Scriptable.
-// These must be at the very top of the file. Do not edit.
-// icon-color: brown; icon-glyph: dumbbell;
-let widget_family = 0;
-const weekday = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const today = get_today();
-const DATA_MIN = 0;
-const DATA_MAX = 100;
-let aggregated_value = 0;
+/**
+ * 
+ */
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-
-let widget = await createWidget()
-
-
-if (config.runsInWidget) {
-    Script.setWidget(widget)
-} else {
-    widget.presentSmall()
-    Script
-}
-
-
-if (config.runsWithSiri) {
-    const capacity = await get_steinbock_capacity();
-    if (capacity !== -1) {
-        Speech.speak(`The Steinbock has an utilization of ${capacity} % right now. This corresponds to ${Math.round(80 * capacity / 100)} people.`);
-    } else {
-        Speech.speak('Oops, Looks like there was an Error! Please try again later.');
+class SteinbockWidget {
+    constructor() {
+        this.today = this.getDate();
+        this.isHoliday = Tools.isHoliday(this.today);
+        this.parameters = this.parseParameters();
+        this.widgetFamily = 0;
+        this.dataAggregation = 3;
     }
-}
-
-Script.complete()
-
-async function createWidget() {    
-    let widget = new ListWidget();
-    widget.setPadding(10, 0, 0, 0);
-    widget.backgroundColor = Color.dynamic(new Color('ffffff'),new Color('000000'))
-    
-    if (config.widgetFamily === undefined) {
-        widget_family = -1;
-    } else {
-        if (config.widgetFamily === 'small') {
-            widget_family = 1;
-        } else if (config.widgetFamily === 'medium') {
-            widget_family = 2;
-        } else if (config.widgetFamily === 'large') {
-            widget_family = 3;
-        } else {
-            widget_family = 0;
+ 
+    async run() {
+        let widget = await this.createWidget()
+        if (!config.runsInWidget) {
+            await widget.presentSmall()
         }
+        Script.setWidget(widget)
+        Script.complete()
     }
-
-    let header = widget.addText('Steinbock🐐🧗'.toUpperCase());
-    header.font = Font.boldSystemFont(10);
-    header.centerAlignText();
-    header.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
-
-    widget.addSpacer(7.5);
-
-    const capacity = await get_steinbock_capacity();
-    
-    if(capacity === -1) {
-        let err_message = widget.addText('No data available!\nPerhaps, you may not be connected to the Internet!');
-        err_message.font = Font.boldSystemFont(10);
-        err_message.centerAlignText();
-        err_message.textColor = Color.red();
-        widget.addSpacer(20)
-    } else {
-        addDataView(widget, capacity);
-        widget.addSpacer();
-        const capacity_csv = await get_website_content('https://raw.githubusercontent.com/robin-ger35/Steinbock_Capacity/main/aggregated_capacity_steinbock.csv');
-        const agg_array = split_csv(capacity_csv);
-        if(agg_array.length === 0) {
-            let err_message = widget.addText('Chart not available!');
-            err_message.font = Font.boldSystemFont(10);
-            err_message.centerAlignText();
-            err_message.textColor = Color.red();
-            widget.addSpacer(10);
-        } else {
-            console.log(agg_array)
-            add_graph(widget, agg_array);
-        }
-    }
-    return widget;
-}
-
-function match_capacity_percent(content) {
-    const regex = /(left:[\s\S]*top)/;
-    const result = content.match(regex);
-    const regex_percent = /([0-9]+(\.|,|[0-9])*)/;
-    const result_percent = result[0].match(regex_percent);
-    return result_percent[0];
-}
-
-async function get_steinbock_capacity() {
-    let capacity = -1;
-    const steinbock_content = await get_website_content("https://www.boulderado.de/boulderadoweb/gym-clientcounter/index.php?mode=get&token=eyJhbGciOiJIUzI1NiIsICJ0eXAiOiJKV1QifQ.eyJjdXN0b21lciI6IlN0ZWluYm9ja0tvbnN0YW56MzkyMDE5In0.Io2pIXQ4lXUmRXM3Q0snudOGYytyZkVv3hbSh_QrUA0&ampel=1");
-    if (steinbock_content !== -1) {
-        capacity = match_capacity_percent(steinbock_content);
-    }
-    return capacity;
-}
-
-async function get_website_content(url_string) {
-    let req = new Request(url_string);
-    try {
-        const website_content = await req.loadString();
-        return website_content;
-    } catch {
-        return -1;
-    }
-}
-
-function add_graph(widget, median_array) {
-    
-    let draw_context = new DrawContext();
-    let widget_width = 0;
-    let widget_height = 0;
-    if (widget_family === 1 || widget_family === -1) {
-        draw_graph(widget, draw_context, 169,169, 0.5, median_array);
-        widget.backgroundImage = (draw_context.getImage());
-    } else if (widget_family === 2) {
-        draw_graph(widget, draw_context, 360,169, 1, median_array);
-        widget.backgroundImage = (draw_context.getImage());
-    } else if (widget_family === 3) {
-        draw_graph(widget, draw_context, 360, 376, 0.75, median_array);
-        widget.addImage(draw_context.getImage());
-    }
-    
-    widget.centerAlignContent;
-}
-
-function draw_graph(widget, drawContext, widget_width, widget_height, scale_to, median_array) {
-    const image_width = widget_width * Device.screenScale();
-    const image_height = widget_height * Device.screenScale();
-    
-    drawContext.size = new Size(image_width, image_height);
-    drawContext.opaque = false;
-    
-    let steps = image_width / (median_array.length - 1);
-    let points = median_array.map((current, index, all) => {
-        const x = steps * index;
-        const y = image_height - (current - DATA_MIN) / DATA_MAX * image_height * scale_to;
-        return new Point(x, y);
-    });
-    
-    let path = new Path();
-    path.move(new Point(0, image_height));
-    path.addLine(points[0]);
-    for (let i = 0; i < points.length; i++) {
-        path.addLine(points[i]);
-    }
-    path.addLine(new Point(points[points.length - 1].x, image_height));
-    path.closeSubpath();
-    drawContext.addPath(path);
-    drawContext.setFillColor(new Color('555555'));
-    drawContext.fillPath(path);
-    
-    // horizontal lines
-    const shifter = 0.5
-    const temp_line_array = [25,50,75,100];
-    for (let j = 0; j < temp_line_array.length; j++) {
-        const temp_line = new Path();
-        temp_line.move(new Point(0, image_height - (temp_line_array[j] - DATA_MIN) / DATA_MAX * image_height * shifter));
-        temp_line.addLine(new Point(image_width, image_height - (temp_line_array[j] - DATA_MIN) / DATA_MAX * image_height * shifter));
-        temp_line.closeSubpath();
-        drawContext.addPath(temp_line);
-        drawContext.setLineWidth(0.5);
-        drawContext.setStrokeColor(choose_color(temp_line_array[j]));
-        drawContext.strokePath();
-        drawContext.setTextColor(choose_color(temp_line_array[j]));
-        drawContext.setFont(Font.mediumSystemFont(20));
-        drawContext.drawText(temp_line_array[j].toString(), new Point(0,image_height - (temp_line_array[j] - DATA_MIN) / DATA_MAX * image_height * shifter));
-    }
-    
-    draw_time_triangle(drawContext, image_width, image_height, steps, shifter)
-    return drawContext;
-}
-
-function draw_time_triangle(drawContext, image_width, image_height, steps, shifter) {
-    let current_step = 0;
-    if(today.weekday === weekday[0] || today.weekday === weekday[6]) {
-        current_step = parseInt(today.hour) - 9;
-    } else {
-        current_step = parseInt(today.hour) - 10;
-    }
-    if(current_step < 0) {
-        return;
-    }
-    current_step *= 4;
-    current_step += parseInt(today.minutes) / 15;
-    
-    const temp_line = new Path();
-    temp_line.move(new Point(current_step * steps, image_height - (15 - DATA_MIN) / DATA_MAX * image_height * shifter));
-    temp_line.addLine(new Point(current_step * steps + steps / 1.5, image_height));
-    temp_line.addLine(new Point(current_step * steps - steps / 1.5, image_height));
-    temp_line.addLine(new Point(current_step * steps, image_height - (15 - DATA_MIN) / DATA_MAX * image_height * shifter));
-    temp_line.closeSubpath();
-    drawContext.addPath(temp_line);
-    drawContext.setLineWidth(0.5);
-    drawContext.setFillColor(Color.blue());
-    drawContext.fillPath();
-}
-
-function addDataView(widget, capacity) {
-    let viewStack = widget.addStack();
-    viewStack.layoutVertically();
-    
-    const time = parseInt(today.hour + today.minutes)
-    if(((today.weekday === 'Monday' || today.weekday === 'Tuesday' || today.weekday === 'Wednesday' || today.weekday === 'Thursday' || today.weekday === 'Friday') && (time < 1000 || time > 2300)) || ((today.weekday === 'Saturday' || today.weekday === 'Sunday') && (time < 900 || time > 2200))) {
-        add_text_outside_opening_times(viewStack);
-    } else {
-        add_text_within_opening_times(viewStack, capacity);
-    }
-}
-
-function add_text_within_opening_times(viewStack, capacity) {
-    let horizontal_stack1 = viewStack.addStack();
-    horizontal_stack1.addSpacer();
-    let label = horizontal_stack1.addText('Current Utilization:');
-    label.font = Font.mediumSystemFont(12);
-    label.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
-    horizontal_stack1.addSpacer();
-    
-    let horizontal_stack2 = viewStack.addStack();
-    horizontal_stack2.addSpacer();
-    let footnote = horizontal_stack2.addText(`${today.hour}:${today.minutes}`);
-    footnote.font = Font.mediumSystemFont(8);
-    footnote.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
-    horizontal_stack2.addSpacer();
-    let value_text = `${capacity}% ≈ ${Math.round(80 * capacity / 100)}/80`;
-    let value_color = choose_color(capacity);
-
-    let horizontal_stack3 = viewStack.addStack();
-    horizontal_stack3.addSpacer();
-    let value = horizontal_stack3.addText(value_text);
-    value.font = Font.mediumSystemFont(20);
-    value.textColor = value_color;
-    horizontal_stack3.addSpacer();
-}
-
-function add_text_outside_opening_times(viewStack, capacity) {
-    let horizontal_stack2 = viewStack.addStack();
-    horizontal_stack2.addSpacer();
-    let footnote = horizontal_stack2.addText(`${today.hour}:${today.minutes}`);
-    footnote.font = Font.mediumSystemFont(8);
-    footnote.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
-    horizontal_stack2.addSpacer();
-
-    let horizontal_stack3 = viewStack.addStack();
-    horizontal_stack3.addSpacer();
-    let value = horizontal_stack3.addText('The Steinbock is not open at the moment!');
-    value.font = Font.mediumSystemFont(12);
-    value.textColor = Color.orange();
-    horizontal_stack3.addSpacer();
-}
-
-function split_csv(csv) {
-    const rows = csv.split('\n');
-    let splitted_rows = []
-    for(let i = 1; i < rows.length; i++) {
-        splitted_rows.push(rows[i].split(','));
-    }
-    let time_capacity = [];
-    for(let i = 0; i < splitted_rows.length; i++) {
-        if(splitted_rows[i][0] === today.weekday) {
-            console.log(splitted_rows[i])
-            time_capacity.push(parseFloat(splitted_rows[i][2 + aggregated_value]))
-        }
-    }
-    return time_capacity;
-}
-
-function choose_color(temperature) {
-    const red = 0;
-    const yellow = 60;
-    const green = 120;
-    const turquoise = 180;
-    const blue = 240;
-    const pink = 300;
-    
-    let colour = 'ffffff';
-    if(temperature >= 0 && temperature < 25) {
-        colour = hsl_col_perc((temperature - 0) / (25 - 0) * 100, 150, green);
-    } else if(temperature >= 25 && temperature < 50) {
-        colour = hsl_col_perc((temperature - 25) / (50 - 25) * 100, green, yellow);
-    } else if(temperature >= 50 && temperature <= 75) {
-        colour = hsl_col_perc((temperature - 50) / (90 - 50) * 100, yellow, red);
-    } else {
-        colour = hsl_col_perc((temperature - 90) / (100 - 90) * 100, 360, pink);
-    }
-    return new Color(colour);
-}
-
-function hslToHex(h, s, l) {
-  l /= 100;
-  const a = s * Math.min(l, 1 - l) / 100;
-  const f = n => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
-}
+ 
+    async createWidget(items) {
+        this.currentUtilization = await this.getCurrentUtilization();
+        this.utilizationHistory = await this.getUtilizationHistory();
         
-function hsl_col_perc(percent, start, end) {
-  const a = percent / 100;
-  const b = (end - start) * a;
-  const c = b + start;
-  return hslToHex(c,100,45);
-}
+        let listWidget = new ListWidget();
+        listWidget.setPadding(10, 0, 0, 0);
+        listWidget.backgroundColor = Color.dynamic(new Color('ffffff'),new Color('000000'))
+        
+        if (config.widgetFamily === undefined) {
+            this.widgetFamily = -1;
+        } else {
+            if (config.widgetFamily === 'small') {
+                this.widgetFamily = 1;
+            } else if (config.widgetFamily === 'medium') {
+                this.widgetFamily = 2;
+            } else if (config.widgetFamily === 'large') {
+                this.widgetFamily = 3;
+            } else {
+                this.widgetFamily = 0;
+            }
+        }
 
-function get_today() {
-    let today = new Date(Date.now());
-    let day = today.getDate();
-    day = day.toString().padStart(2, '0');
+        let header = listWidget.addText('Steinbock🐐🧗'.toUpperCase());
+        header.font = Font.boldSystemFont(10);
+        header.centerAlignText();
+        header.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
 
-    let month = today.getMonth() + 1;
-    month = month.toString().padStart(2, '0');
+        listWidget.addSpacer(7.5);
+
+        if (this.currentUtilization.error) {
+            let errMessage = listWidget.addText(this.currentUtilization.error);
+            errMessage.font = Font.boldSystemFont(10);
+            errMessage.centerAlignText();
+            errMessage.textColor = Color.red();
+            listWidget.addSpacer(20)
+        } else {
+            this.addDataView(listWidget);
+            listWidget.addSpacer();
+            if (this.utilizationHistory.error) {
+                console.log(this.utilizationHistory)
+                let errMessage = listWidget.addText(this.utilizationHistory.error);
+                errMessage.font = Font.boldSystemFont(10);
+                errMessage.centerAlignText();
+                errMessage.textColor = Color.red();
+                listWidget.addSpacer(10);
+            } else {
+                let chart = new LineChart(this.widgetFamily, this.utilizationHistory.data, this.isHoliday).configure();
+                if (this.widgetFamily === 1 || this.widgetFamily === -1) {
+                    listWidget.backgroundImage = (chart.getImage());
+                } else if (this.widgetFamily === 2) {
+                    listWidget.backgroundImage = (chart.getImage());
+                } else if (this.widgetFamily === 3) {
+                    listWidget.addImage(chart.getImage());
+                }
+                listWidget.centerAlignContent;
+            }
+        }
+        return listWidget;
+    }
+ 
+    async getWebsiteContent(url) {
+        let req = new Request(url);
+        try {
+            const website_content = await req.loadString();
+            return {success: website_content};
+        } catch(e) {
+            return {error: e.toString()};
+        }
+    }
+ 
+    async getCurrentUtilization() {
+        const websiteContent = await this.getWebsiteContent("https://www.boulderado.de/boulderadoweb/gym-clientcounter/index.php?mode=get&token=eyJhbGciOiJIUzI1NiIsICJ0eXAiOiJKV1QifQ.eyJjdXN0b21lciI6IlN0ZWluYm9ja0tvbnN0YW56MzkyMDE5In0.Io2pIXQ4lXUmRXM3Q0snudOGYytyZkVv3hbSh_QrUA0&ampel=1");
+        if (websiteContent.error) {
+            return websiteContent;
+        }
+
+        let resultPercent = {error: 'Couldn\'t match current utilization'};
+        const positionRegEx = /(left:[\s\S]*top)/;
+        if (positionRegEx.test(websiteContent.success)) {
+            const result = websiteContent.success.match(positionRegEx);
+            const percentRegEx = /([0-9]+(\.|,|[0-9])*)/;
+            if (percentRegEx.test(result[0])) {
+                resultPercent = {success: 'Could receive utilization', utilization: parseFloat(result[0].match(percentRegEx))};
+            }
+        }
+        return resultPercent;
+    }
+ 
+    async getUtilizationHistory() {
+        let retObj = {};
+        try {
+            const websiteContent = await this.getWebsiteContent('https://raw.githubusercontent.com/robin-ger35/Steinbock_Capacity/main/aggregated_capacity_steinbock.csv');
+            if (websiteContent.error) {
+                return websiteContent;
+            }
+            const csvRows = websiteContent.success.split('\n');
+            let csvColsRow = []
+            for(let i = 1; i < csvRows.length; i++) {
+                csvColsRow.push(csvRows[i].split(','));
+            }
+            let utilizationHistory = [];
+            for(let i = 0; i < csvColsRow.length; i++) {
+                if(csvColsRow[i][0] === this.parameters.day) {
+                    utilizationHistory.push(parseFloat(csvColsRow[i][this.dataAggregation]))
+                }
+            }
+            retObj = {success: true, data: utilizationHistory};
+        } catch (e) {
+            retObj = {error: e.toString()};
+        }
+        return retObj;
+    }
+ 
+    addDataView(widget) {
+        let viewStack = widget.addStack();
+        viewStack.layoutVertically();
+         
+        const time = parseInt(this.today.hour + this.today.minutes);
+        let textByOpeningTimes;
+        let colorByOpeningTimes;
+        let fontSizeByOpeningTimes;
+        if(((this.today.weekday === 'Monday' || this.today.weekday === 'Tuesday' || this.today.weekday === 'Wednesday' || this.today.weekday === 'Thursday' || this.today.weekday === 'Friday') && (time < 1000 || time > 2300)) || ((this.today.weekday === 'Saturday' || this.today.weekday === 'Sunday') && (time < 900 || time > 2200))) {
+            textByOpeningTimes = 'The Steinbock is currently closed!';
+            colorByOpeningTimes = Color.orange();
+            fontSizeByOpeningTimes = 12;
+        } else {
+            let horizontal_stack1 = viewStack.addStack();
+            horizontal_stack1.addSpacer();
+            let label = horizontal_stack1.addText('Current Utilization:');
+            label.font = Font.mediumSystemFont(12);
+            label.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
+            horizontal_stack1.addSpacer();
+
+            textByOpeningTimes = `${this.currentUtilization.utilization}% ≈ ${Math.round(80 * this.currentUtilization.utilization / 100)}/80`;
+            colorByOpeningTimes = Tools.chooseColor(this.currentUtilization.utilization);
+            fontSizeByOpeningTimes = 20;
+        }
+        
+        
+        if (this.isHoliday) {
+            fontSizeByOpeningTimes = 15;
+        }
+        
+        let horizontal_stack2 = viewStack.addStack();
+        horizontal_stack2.addSpacer();
+        let footnote = horizontal_stack2.addText(`${this.today.hour}:${this.today.minutes}`);
+        footnote.font = Font.mediumSystemFont(8);
+        footnote.textColor = Color.dynamic(new Color('000000'),new Color('ffffff'));
+        horizontal_stack2.addSpacer();
+
+        let horizontal_stack3 = viewStack.addStack();
+        horizontal_stack3.addSpacer();
+        let value = horizontal_stack3.addText(textByOpeningTimes);
+        value.font = Font.mediumSystemFont(fontSizeByOpeningTimes);
+        value.textColor = colorByOpeningTimes;
+        horizontal_stack3.addSpacer();
+
+        if (this.isHoliday) {
+            let verticalStack = viewStack.addStack();
+            verticalStack.layoutVertically();
+            
+            let vh1Stack = verticalStack.addStack();
+            vh1Stack.addSpacer();
+            let vh1Val = vh1Stack.addText('Opening Times may differ');
+            vh1Val.font = Font.mediumSystemFont(8);
+            vh1Val.textColor = Color.orange();
+            vh1Stack.addSpacer();
+            
+            let vh2Stack = verticalStack.addStack();
+            vh2Stack.addSpacer();
+            let vh2Val = vh2Stack.addText('due to holidays!');
+            vh2Val.font = Font.mediumSystemFont(8);
+            vh2Val.textColor = Color.orange();
+            vh2Stack.addSpacer();
+        }
+    }
+ 
+    parseParameters() {
+        const parameters = JSON.parse(args.widgetParameter);
+        if (parameters != null) {
+            if (parameters.hasOwnProperty('day')) {
+                if (Number.isInteger(parameters.day)) {
+                    let day = parseInt(parameters.day);
+                    if (day >= 0 && day <= 6) {
+                        return {day: WEEKDAYS[day]};
+                    }
+                }
+            }
+        }
+        return {day: this.today.weekday};
+    }
+ 
+    getDate() {
+        let today = new Date(Date.now());
+        let day = today.getDate();
+        day = day.toString().padStart(2, '0');
+
+        let month = today.getMonth() + 1;
+        month = month.toString().padStart(2, '0');
+        
+        let hour = today.getHours();
+        hour = hour.toString().padStart(2, '0');
+        
+        let minutes = today.getMinutes();
+        minutes = minutes.toString().padStart(2, '0');
+        
+        const date = {day: day, month: month, year: today.getFullYear(), hour: hour, minutes: minutes, weekday: WEEKDAYS[today.getDay()]};
+        return date;
+    }
+ }
+ 
+class LineChart {
+    constructor(widgetFamily, utilizationHistory, isHoliday) {
+        this.ctx = new DrawContext()
+        this.imageWidth = 0;
+        this.imageHeight = 0;
+        this.scaleTo = 0;
+        this.stepLastYear = 0;
+        this.widgetFamily = widgetFamily;
+        this.utilizationHistory = utilizationHistory;
+        this.shifter = isHoliday ? 0.4 : 0.5;
+        this.dataMin = 0;
+        this.dataMax = 100;
+    }
+     
+    configure() {
+        let widgetWidth = 0;
+        let widgetHeight = 0;
+        if (this.widgetFamily === 1 || this.widgetFamily === -1) {
+            widgetWidth = 169;
+            widgetHeight = 169;
+            this.scaleTo = 0.65;
+        } else if (this.widgetFamily === 2) {
+            widgetWidth = 360;
+            widgetHeight = 169;
+            this.scaleTo = 1;
+        } else if (this.widgetFamily === 3) {
+            widgetWidth = 360;
+            widgetHeight = 376;
+            this.scaleTo = 0.75;
+        }
+        this.imageWidth = widgetWidth * Device.screenScale();
+        this.imageHeight = widgetHeight * Device.screenScale();
+        this.ctx.size = new Size( this.imageWidth, this.imageHeight );
+        this.ctx.opaque = false;
+        this.drawUtilizationPath();
+        this.drawHelperLines();
+        return this.ctx;
+    }
+     
+    drawUtilizationPath() {
+        let steps = this.imageWidth / (this.utilizationHistory.length - 1);
+        let points = this.utilizationHistory.map((current, index, all) => {
+            const x = steps * index;
+            const y = this.imageHeight - (current - this.dataMin) / this.dataMax * this.imageHeight * this.shifter;
+            return new Point(x, y);
+        });
+        
+        let path = new Path();
+        path.move(new Point(0, this.imageHeight));
+        path.addLine(points[0]);
+        for (let i = 0; i < points.length; i++) {
+            path.addLine(points[i]);
+        }
+        path.addLine(new Point(points[points.length - 1].x, this.imageHeight));
+        path.closeSubpath();
+        this.ctx.addPath(path);
+        this.ctx.setFillColor(new Color('555555'));
+        this.ctx.fillPath(path);
+    }
     
-    let hour = today.getHours();
-    hour = hour.toString().padStart(2, '0');
-    
-    let minutes = today.getMinutes();
-    minutes = minutes.toString().padStart(2, '0');
-    
-    const date = {day: day, month: month, year: today.getFullYear(), hour: hour, minutes: minutes, weekday: weekday[today.getDay()]};
-    return date;
+    drawHelperLines() {
+        const tempLineArray = [25,50,75,100];
+        for (let j = 0; j < tempLineArray.length; j++) {
+            const temp_line = new Path();
+            temp_line.move(new Point(0, this.imageHeight - (tempLineArray[j] - this.dataMin) / this.dataMax * this.imageHeight * this.shifter));
+            temp_line.addLine(new Point(this.imageWidth, this.imageHeight - (tempLineArray[j] - this.dataMin) / this.dataMax * this.imageHeight * this.shifter));
+            temp_line.closeSubpath();
+            this.ctx.addPath(temp_line);
+            this.ctx.setLineWidth(0.5);
+            this.ctx.setStrokeColor(Tools.chooseColor(tempLineArray[j]));
+            this.ctx.strokePath();
+            this.ctx.setTextColor(Tools.chooseColor(tempLineArray[j]));
+            this.ctx.setFont(Font.mediumSystemFont(20));
+            this.ctx.drawText(tempLineArray[j].toString(), new Point(0,this.imageHeight - (tempLineArray[j] - this.dataMin) / this.dataMax * this.imageHeight * this.shifter));
+        }
+    }
+ 
+    drawTimeTriangle() {
+        let currentStep = 0;
+        if(this.parameters.day === weekday[0] || this.parameters.day === weekday[6]) {
+            currentStep = parseInt(today.hour) - 9;
+        } else {
+            currentStep = parseInt(today.hour) - 10;
+        }
+        if(currentStep < 0) {
+            return;
+        }
+        currentStep *= 4;
+        currentStep += parseInt(today.minutes) / 15;
+        
+        const tempLine = new Path();
+        tempLine.move(new Point(currentStep * steps, this.imageHeight - (15 - this.dataMin) / this.dataMax * this.imageHeight * this.shifter));
+        tempLine.addLine(new Point(currentStep * steps + steps / 1.5, this.imageHeight));
+        tempLine.addLine(new Point(currentStep * steps - steps / 1.5, this.imageHeight));
+        tempLine.addLine(new Point(currentStep * steps, this.imageHeight - (15 - this.dataMin) / this.dataMax * this.imageHeight * this.shifter));
+        tempLine.closeSubpath();
+        this.ctx.addPath(tempLine);
+        this.ctx.setLineWidth(0.5);
+        this.ctx.setFillColor(Color.blue());
+        this.ctx.fillPath();
+    }
 }
+ 
+class Tools {
+    static chooseColor(utilization) {
+        const red = 0;
+        const yellow = 60;
+        const green = 120;
+        const turquoise = 180;
+        const blue = 240;
+        const pink = 300;
+        
+        let colour = 'ffffff';
+        if(utilization >= 0 && utilization < 25) {
+            colour = this.hsl_col_perc((utilization - 0) / (25 - 0) * 100, 150, green);
+        } else if(utilization >= 25 && utilization < 50) {
+            colour = this.hsl_col_perc((utilization - 25) / (50 - 25) * 100, green, yellow);
+        } else if(utilization >= 50 && utilization <= 75) {
+            colour = this.hsl_col_perc((utilization - 50) / (90 - 50) * 100, yellow, red);
+        } else {
+            colour = this.hsl_col_perc((utilization - 90) / (100 - 90) * 100, 360, pink);
+        }
+        return new Color(colour);
+    }
+    
+    static hslToHex(h, s, l) {
+        l /= 100;
+        const a = s * Math.min(l, 1 - l) / 100;
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+        return `#${f(0)}${f(8)}${f(4)}`;
+    }
+            
+    static hsl_col_perc(percent, start, end) {
+        const a = percent / 100;
+        const b = (end - start) * a;
+        const c = b + start;
+        return this.hslToHex(c,100,45);
+    }
+    
+    static isHoliday(today) {
+        let holidays = [];
+
+        const easter = this.calculateEaster(today.year);
+        const easterDate = new Date(today.year, parseInt(easter.month) - 1, parseInt(easter.day));
+
+        const newYear = {day: '01', month: '01'};
+        const epiphany = {day: '06', month: '01'};
+        const goodFridayDate = new Date(easterDate);
+        goodFridayDate.setDate(goodFridayDate.getDate() - 2);
+        const goodFriday = {day: goodFridayDate.getDate().toString().padStart(2, '0'), month: (goodFridayDate.getMonth() + 1).toString().padStart(2, '0')};
+        const easterSunday = easter;
+        const easterMondayDate = new Date(easterDate);
+        easterMondayDate.setDate(easterMondayDate.getDate() + 1);
+        const easterMonday = {day: easterMondayDate.getDate().toString().padStart(2, '0'), month: (easterMondayDate.getMonth() + 1).toString().padStart(2, '0')};
+        const laborDay = {day: '01', month: '05'};
+        const ascensionDayDate = new Date(easterDate);
+        ascensionDayDate.setDate(ascensionDayDate.getDate() + 39);
+        const ascensionDay = {day: ascensionDayDate.getDate().toString().padStart(2, '0'), month: (ascensionDayDate.getMonth() + 1).toString().padStart(2, '0')};
+        const whitSundayDate = new Date(easterDate);
+        whitSundayDate.setDate(whitSundayDate.getDate() + 49);
+        const whitSunday = {day: whitSundayDate.getDate().toString().padStart(2, '0'), month: (whitSundayDate.getMonth() + 1).toString().padStart(2, '0')};
+        const whitMondayDate = new Date(easterDate);
+        whitMondayDate.setDate(whitMondayDate.getDate() + 50);
+        const whitMonday = {day: whitMondayDate.getDate().toString().padStart(2, '0'), month: (whitMondayDate.getMonth() + 1).toString().padStart(2, '0')};
+        const corpusChristiDate = new Date(easterDate);
+        corpusChristiDate.setDate(corpusChristiDate.getDate() + 60);
+        const corpusChristi = {day: corpusChristiDate.getDate().toString().padStart(2, '0'), month: (corpusChristiDate.getMonth() + 1).toString().padStart(2, '0')};
+        const germanUnityDay = {day: '03', month: '10'};
+        const allSaints = {day: '01', month: '11'};
+        const christmas = {day: '24', month: '12'};
+        const christmasOne = {day: '25', month: '12'};
+        const christmasTwo = {day: '26', month: '12'};
+        const newYearsEve = {day: '31', month: '12'};
+
+        holidays.push(newYear);
+        holidays.push(epiphany);
+        holidays.push(goodFriday);
+        holidays.push(easterSunday);
+        holidays.push(easterMonday);
+        holidays.push(laborDay);
+        holidays.push(ascensionDay);
+        holidays.push(whitSunday);
+        holidays.push(whitMonday);
+        holidays.push(corpusChristi);
+        holidays.push(germanUnityDay);
+        holidays.push(allSaints);
+        holidays.push(christmas);
+        holidays.push(christmasOne);
+        holidays.push(christmasTwo);
+        holidays.push(newYearsEve);
+
+        let isHoliday = false;
+        holidays.forEach((val, idx) => {
+            if (val.day === today.day && val.month === today.month) {
+                isHoliday = true;
+            }
+        });
+        return isHoliday;
+    }
+
+    static calculateEaster(year) {
+        let day;
+        let month;
+        let a = year % 19;
+        let b = year % 4;
+        let c = year % 7;
+        let p = Math.floor(year / 100);
+        let q = Math.floor((13 + 8 * p) / 25);
+        let m = (15 - q + p - p / 4) % 30;
+        let n = (4 + p - p / 4) % 7;
+        let d = (19 * a + m) % 30;
+        let e = (2 * b + 4 * c + 6 * d + n) % 7;
+        let days = (22 + d + e);
+        if ((d == 29) && (e == 6)) {
+            day = 19;
+            month = 4;
+        } else if ((d == 28) && (e == 6)) {
+            day = 18;
+            month = 4;
+        } else {
+            if (days > 31) {
+                day = days - 31;
+                month = 4;
+            } else {
+                day = days;
+                month = 3;
+            }
+        }
+        day = day.toString().padStart(2, '0');
+        month = month.toString().padStart(2, '0');
+        return {day: day, month: month};
+    }
+}
+ 
+await new SteinbockWidget().run();
+
