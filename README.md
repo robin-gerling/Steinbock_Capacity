@@ -11,7 +11,7 @@ It also shows the median utilization of the current weekday from past weeks.
 5. Select the *SteinbockUtilization* script in the configurator
 
 #### (Optional)
-Specify the parameter day to show the graph of a different day as follows: *{"day": "```param```}*<br>
+Specify the parameter day to show the graph of a different day as follows: *{"day": "```param```"}*<br>
 | Replace *```param```* by | to get the graph of the following day |
 |         :--:             |             :-----------:             |
 |          0               | Sunday                                |
