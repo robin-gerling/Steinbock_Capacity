@@ -24,7 +24,7 @@ class SteinbockWidget {
     async createWidget(items) {
         this.currentUtilization = await this.getCurrentUtilization();
         this.utilizationHistory = await this.getUtilizationHistory();
-        
+
         let listWidget = new ListWidget();
         listWidget.setPadding(10, 0, 0, 0);
         listWidget.backgroundColor = Color.dynamic(new Color('ffffff'),new Color('000000'))
@@ -67,7 +67,7 @@ class SteinbockWidget {
                 errMessage.textColor = Color.red();
                 listWidget.addSpacer(10);
             } else {
-                let chart = new LineChart(this.widgetFamily, this.utilizationHistory.data, this.isHoliday).configure();
+                let chart = new LineChart(this.widgetFamily, this.utilizationHistory.data, this.isHoliday, this.parameters, this.today).configure();
                 if (this.widgetFamily === 1 || this.widgetFamily === -1) {
                     listWidget.backgroundImage = (chart.getImage());
                 } else if (this.widgetFamily === 2) {
@@ -202,7 +202,7 @@ class SteinbockWidget {
         const parameters = JSON.parse(args.widgetParameter);
         if (parameters != null) {
             if (parameters.hasOwnProperty('day')) {
-                if (Number.isInteger(parameters.day)) {
+                if (/[0-9]/.test(parameters.day)) {
                     let day = parseInt(parameters.day);
                     if (day >= 0 && day <= 6) {
                         return {day: WEEKDAYS[day]};
@@ -233,17 +233,19 @@ class SteinbockWidget {
  }
  
 class LineChart {
-    constructor(widgetFamily, utilizationHistory, isHoliday) {
+    constructor(widgetFamily, utilizationHistory, isHoliday, parameters, today) {
         this.ctx = new DrawContext()
         this.imageWidth = 0;
         this.imageHeight = 0;
         this.scaleTo = 0;
-        this.stepLastYear = 0;
+//         this.stepLastYear = 0;
         this.widgetFamily = widgetFamily;
         this.utilizationHistory = utilizationHistory;
         this.shifter = isHoliday ? 0.4 : 0.5;
         this.dataMin = 0;
         this.dataMax = 100;
+        this.parameters = parameters;
+        this.today = today;
     }
      
     configure() {
@@ -268,6 +270,7 @@ class LineChart {
         this.ctx.opaque = false;
         this.drawUtilizationPath();
         this.drawHelperLines();
+        this.drawTimeTriangle();
         return this.ctx;
     }
      
@@ -303,25 +306,27 @@ class LineChart {
             this.ctx.setLineWidth(0.5);
             this.ctx.setStrokeColor(Tools.chooseColor(tempLineArray[j]));
             this.ctx.strokePath();
-            this.ctx.setTextColor(Tools.chooseColor(tempLineArray[j]));
+            if (j > 0) {
+this.ctx.setTextColor(Tools.chooseColor(tempLineArray[j]));
             this.ctx.setFont(Font.mediumSystemFont(20));
             this.ctx.drawText(tempLineArray[j].toString(), new Point(0,this.imageHeight - (tempLineArray[j] - this.dataMin) / this.dataMax * this.imageHeight * this.shifter));
+}
         }
     }
  
     drawTimeTriangle() {
         let currentStep = 0;
-        if(this.parameters.day === weekday[0] || this.parameters.day === weekday[6]) {
-            currentStep = parseInt(today.hour) - 9;
+        if(this.parameters.day === WEEKDAYS[0] || this.parameters.day === WEEKDAYS[6]) {
+            currentStep = parseInt(this.today.hour) - 9;
         } else {
-            currentStep = parseInt(today.hour) - 10;
+            currentStep = parseInt(this.today.hour) - 10;
         }
         if(currentStep < 0) {
             return;
         }
         currentStep *= 4;
-        currentStep += parseInt(today.minutes) / 15;
-        
+        currentStep += parseInt(this.today.minutes) / 15;
+        let steps = this.imageWidth / (this.utilizationHistory.length - 1);
         const tempLine = new Path();
         tempLine.move(new Point(currentStep * steps, this.imageHeight - (15 - this.dataMin) / this.dataMax * this.imageHeight * this.shifter));
         tempLine.addLine(new Point(currentStep * steps + steps / 1.5, this.imageHeight));
@@ -471,4 +476,3 @@ class Tools {
 }
  
 await new SteinbockWidget().run();
-

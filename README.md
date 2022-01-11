@@ -3,6 +3,8 @@
 This script shows the current utilization of the bouldering hall *der Steinbock* in Constance, Germany.<br>
 It also shows the median utilization of the current weekday from past weeks.
 
+![alt text](https://github.com/robin-ger35/Steinbock_Capacity/blob/main/widgetExample.png?raw=true)
+
 ## Installation
 1. Install Scriptable (only Apple) from the AppStore (https://apps.apple.com/de/app/scriptable/id1405459188)
 2. Copy the content of the file ***SteinbockUtilization.js***
@@ -11,7 +13,7 @@ It also shows the median utilization of the current weekday from past weeks.
 5. Select the *SteinbockUtilization* script in the configurator
 
 #### (Optional)
-Specify the parameter day to show the graph of a different day as follows: *{"day": "```param```}*<br>
+Specify the parameter day to show the graph of a different day as follows: *{"day": "```param```"}*<br>
 | Replace *```param```* by | to get the graph of the following day |
 |         :--:             |             :-----------:             |
 |          0               | Sunday                                |
