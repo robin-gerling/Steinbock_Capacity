@@ -1,5 +1,5 @@
 /**
- * 
+ * Visit https://github.com/r-gerling/Steinbock_Capacity for more information.
  */
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
