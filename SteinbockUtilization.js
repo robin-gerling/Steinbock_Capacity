@@ -112,7 +112,7 @@ class SteinbockWidget {
     async getUtilizationHistory() {
         let retObj = {};
         try {
-            const websiteContent = await this.getWebsiteContent('https://raw.githubusercontent.com/robin-ger35/Steinbock_Capacity/main/aggregated_capacity_steinbock.csv');
+            const websiteContent = await this.getWebsiteContent('https://raw.githubusercontent.com/r-gerling/Steinbock_Capacity/main/aggregated_capacity_steinbock.csv');
             if (websiteContent.error) {
                 return websiteContent;
             }
